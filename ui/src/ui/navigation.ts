@@ -163,3 +163,18 @@ export function titleForTab(tab: Tab) {
 export function subtitleForTab(tab: Tab) {
   return t(`subtitles.${tab}`);
 }
+
+/** Tabs hidden when the gateway runs in ClawDeck hosted mode. */
+const HOSTED_MODE_HIDDEN_TABS: ReadonlySet<string> = new Set(["config", "debug"]);
+
+/** Returns tab groups with hosted-mode-restricted tabs removed. */
+export function filterTabGroupsForHostedMode(
+  groups: typeof TAB_GROUPS,
+): Array<{ label: string; tabs: readonly Tab[] }> {
+  return groups
+    .map((g) => ({
+      label: g.label,
+      tabs: (g.tabs as readonly Tab[]).filter((t) => !HOSTED_MODE_HIDDEN_TABS.has(t)),
+    }))
+    .filter((g) => g.tabs.length > 0);
+}

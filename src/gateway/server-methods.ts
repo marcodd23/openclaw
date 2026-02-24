@@ -33,6 +33,19 @@ import { webHandlers } from "./server-methods/web.js";
 import { wizardHandlers } from "./server-methods/wizard.js";
 
 const CONTROL_PLANE_WRITE_METHODS = new Set(["config.apply", "config.patch", "update.run"]);
+
+/**
+ * RPC methods blocked for browser Control UI connections when the gateway
+ * runs in ClawDeck hosted mode (CLAWDECK_HOSTED=true). Internal operator
+ * clients (the ClawDeck Go API) are exempt because they connect with
+ * platform: "server".
+ */
+const HOSTED_MODE_BLOCKED_METHODS = new Set([
+  "config.set",
+  "config.patch",
+  "config.apply",
+  "update.run",
+]);
 function authorizeGatewayMethod(method: string, client: GatewayRequestOptions["client"]) {
   if (!client?.connect) {
     return null;
@@ -99,6 +112,20 @@ export async function handleGatewayRequest(
   const authError = authorizeGatewayMethod(req.method, client);
   if (authError) {
     respond(false, undefined, authError);
+    return;
+  }
+  // Block dangerous methods for browser Control UI in ClawDeck hosted mode.
+  // The Go API connects with platform: "server" and is exempt.
+  if (
+    process.env.CLAWDECK_HOSTED === "true" &&
+    HOSTED_MODE_BLOCKED_METHODS.has(req.method) &&
+    client?.connect?.client?.platform !== "server"
+  ) {
+    respond(
+      false,
+      undefined,
+      errorShape(ErrorCodes.INVALID_REQUEST, `${req.method} is not available in hosted mode`),
+    );
     return;
   }
   if (CONTROL_PLANE_WRITE_METHODS.has(req.method)) {

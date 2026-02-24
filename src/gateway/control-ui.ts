@@ -343,6 +343,7 @@ export function handleControlUiHttpRequest(
       assistantName: identity.name,
       assistantAvatar: avatarValue ?? identity.avatar,
       assistantAgentId: identity.agentId,
+      hostedMode: process.env.CLAWDECK_HOSTED === "true" || undefined,
     } satisfies ControlUiBootstrapConfig);
     return true;
   }

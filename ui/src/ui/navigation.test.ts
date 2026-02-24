@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   TAB_GROUPS,
+  filterTabGroupsForHostedMode,
   iconForTab,
   inferBasePathFromPathname,
   normalizeBasePath,
@@ -175,15 +176,59 @@ describe("inferBasePathFromPathname", () => {
 describe("TAB_GROUPS", () => {
   it("contains all expected groups", () => {
     const labels = TAB_GROUPS.map((g) => g.label);
-    expect(labels).toContain("Chat");
-    expect(labels).toContain("Control");
-    expect(labels).toContain("Agent");
-    expect(labels).toContain("Settings");
+    expect(labels).toContain("chat");
+    expect(labels).toContain("control");
+    expect(labels).toContain("agent");
+    expect(labels).toContain("settings");
   });
 
   it("all tabs are unique", () => {
     const allTabs = TAB_GROUPS.flatMap((g) => g.tabs);
     const uniqueTabs = new Set(allTabs);
     expect(uniqueTabs.size).toBe(allTabs.length);
+  });
+});
+
+describe("filterTabGroupsForHostedMode", () => {
+  it("removes config and debug tabs", () => {
+    const filtered = filterTabGroupsForHostedMode(TAB_GROUPS);
+    const allTabs = filtered.flatMap((g) => g.tabs);
+    expect(allTabs).not.toContain("config");
+    expect(allTabs).not.toContain("debug");
+  });
+
+  it("keeps all other tabs", () => {
+    const filtered = filterTabGroupsForHostedMode(TAB_GROUPS);
+    const allTabs = filtered.flatMap((g) => g.tabs);
+    expect(allTabs).toContain("chat");
+    expect(allTabs).toContain("overview");
+    expect(allTabs).toContain("channels");
+    expect(allTabs).toContain("instances");
+    expect(allTabs).toContain("sessions");
+    expect(allTabs).toContain("usage");
+    expect(allTabs).toContain("cron");
+    expect(allTabs).toContain("agents");
+    expect(allTabs).toContain("skills");
+    expect(allTabs).toContain("nodes");
+    expect(allTabs).toContain("logs");
+  });
+
+  it("retains settings group with only logs tab", () => {
+    const filtered = filterTabGroupsForHostedMode(TAB_GROUPS);
+    const settingsGroup = filtered.find((g) => g.label === "settings");
+    expect(settingsGroup).toBeDefined();
+    expect(settingsGroup!.tabs).toEqual(["logs"]);
+  });
+
+  it("removes groups that become empty", () => {
+    // Create a synthetic group with only config and debug
+    const testGroups = [
+      { label: "only-blocked", tabs: ["config", "debug"] },
+      { label: "chat", tabs: ["chat"] },
+    ] as unknown as typeof TAB_GROUPS;
+    const filtered = filterTabGroupsForHostedMode(testGroups);
+    expect(filtered.find((g) => g.label === "only-blocked")).toBeUndefined();
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].label).toBe("chat");
   });
 });
