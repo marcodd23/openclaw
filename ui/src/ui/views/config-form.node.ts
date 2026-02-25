@@ -332,6 +332,8 @@ export function renderNode(params: {
   showLabel?: boolean;
   /** When true, unsupported fields are hidden instead of showing an error. */
   hideUnsupported?: boolean;
+  /** Dot-separated config paths to hide entirely (e.g. "commands.bash"). */
+  hiddenPaths?: ReadonlySet<string>;
   searchCriteria?: ConfigSearchCriteria;
   onPatch: (path: Array<string | number>, value: unknown) => void;
 }): TemplateResult | typeof nothing {
@@ -341,6 +343,10 @@ export function renderNode(params: {
   const { label, help, tags } = resolveFieldMeta(path, schema, hints);
   const key = pathKey(path);
   const criteria = params.searchCriteria;
+
+  if (params.hiddenPaths?.has(key)) {
+    return nothing;
+  }
 
   if (unsupported.has(key)) {
     if (params.hideUnsupported) {
@@ -715,6 +721,8 @@ function renderObject(params: {
   unsupported: Set<string>;
   disabled: boolean;
   showLabel?: boolean;
+  hideUnsupported?: boolean;
+  hiddenPaths?: ReadonlySet<string>;
   searchCriteria?: ConfigSearchCriteria;
   onPatch: (path: Array<string | number>, value: unknown) => void;
 }): TemplateResult {
@@ -759,6 +767,7 @@ function renderObject(params: {
         unsupported,
         disabled,
         hideUnsupported: params.hideUnsupported,
+        hiddenPaths: params.hiddenPaths,
         searchCriteria: childSearchCriteria,
         onPatch,
       }),
@@ -773,6 +782,8 @@ function renderObject(params: {
             unsupported,
             disabled,
             reservedKeys: reserved,
+            hideUnsupported: params.hideUnsupported,
+            hiddenPaths: params.hiddenPaths,
             searchCriteria: childSearchCriteria,
             onPatch,
           })
@@ -823,6 +834,8 @@ function renderArray(params: {
   unsupported: Set<string>;
   disabled: boolean;
   showLabel?: boolean;
+  hideUnsupported?: boolean;
+  hiddenPaths?: ReadonlySet<string>;
   searchCriteria?: ConfigSearchCriteria;
   onPatch: (path: Array<string | number>, value: unknown) => void;
 }): TemplateResult {
@@ -905,6 +918,7 @@ function renderArray(params: {
                   unsupported,
                   disabled,
                   hideUnsupported: params.hideUnsupported,
+                  hiddenPaths: params.hiddenPaths,
                   searchCriteria: childSearchCriteria,
                   showLabel: false,
                   onPatch,
@@ -928,6 +942,8 @@ function renderMapField(params: {
   unsupported: Set<string>;
   disabled: boolean;
   reservedKeys: Set<string>;
+  hideUnsupported?: boolean;
+  hiddenPaths?: ReadonlySet<string>;
   searchCriteria?: ConfigSearchCriteria;
   onPatch: (path: Array<string | number>, value: unknown) => void;
 }): TemplateResult {
@@ -1064,6 +1080,7 @@ function renderMapField(params: {
                           unsupported,
                           disabled,
                           hideUnsupported: params.hideUnsupported,
+                          hiddenPaths: params.hiddenPaths,
                           searchCriteria,
                           showLabel: false,
                           onPatch,

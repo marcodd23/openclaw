@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   HOSTED_MODE_ALLOWED_CONFIG_KEYS,
+  HOSTED_MODE_FORCED_DEEP_PATHS,
+  HOSTED_MODE_FORCED_SUBKEYS,
   sanitizeConfigPatchForHostedMode,
   sanitizeConfigSetForHostedMode,
 } from "./hosted-mode-config-guard.js";
@@ -130,7 +132,7 @@ describe("sanitizeConfigSetForHostedMode", () => {
     const allowedConfig = {
       agents: { list: [] },
       messages: { welcome: "hi" },
-      commands: [],
+      commands: { text: true, native: "auto" },
       hooks: {},
       skills: [],
       tools: {},
@@ -151,9 +153,16 @@ describe("sanitizeConfigSetForHostedMode", () => {
 
     expect(result).toBe(true);
     const sanitized = JSON.parse(params.raw as string);
-    for (const [key, value] of Object.entries(allowedConfig)) {
-      expect(sanitized[key]).toEqual(value);
-    }
+    // Non-commands sections pass through unchanged
+    expect(sanitized.agents).toEqual({ list: [] });
+    expect(sanitized.messages).toEqual({ welcome: "hi" });
+    expect(sanitized.ui).toEqual({ theme: "dark" });
+    // commands section has forced sub-keys applied
+    expect(sanitized.commands.text).toBe(true);
+    expect(sanitized.commands.native).toBe("auto");
+    expect(sanitized.commands.bash).toBe(false);
+    expect(sanitized.commands.config).toBe(false);
+    expect(sanitized.commands.debug).toBe(false);
   });
 
   it("returns false for missing raw param", async () => {
@@ -342,5 +351,187 @@ describe("HOSTED_MODE_ALLOWED_CONFIG_KEYS", () => {
     for (const key of infraKeys) {
       expect(HOSTED_MODE_ALLOWED_CONFIG_KEYS.has(key)).toBe(false);
     }
+  });
+});
+
+describe("HOSTED_MODE_FORCED_SUBKEYS", () => {
+  it("forces commands.bash/config/debug to false", () => {
+    expect(HOSTED_MODE_FORCED_SUBKEYS.commands).toEqual({
+      bash: false,
+      config: false,
+      debug: false,
+    });
+  });
+});
+
+describe("forced sub-keys in sanitizeConfigSetForHostedMode", () => {
+  it("overrides commands.bash/config/debug even if tenant enables them", async () => {
+    await mockCurrentConfig({
+      commands: { bash: false, config: false, debug: false, text: true },
+    });
+
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        commands: { bash: true, config: true, debug: true, text: true },
+      }),
+    };
+
+    const result = await sanitizeConfigSetForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.commands.bash).toBe(false);
+    expect(sanitized.commands.config).toBe(false);
+    expect(sanitized.commands.debug).toBe(false);
+    // Non-forced sub-keys pass through
+    expect(sanitized.commands.text).toBe(true);
+  });
+
+  it("applies forced sub-keys even to new commands section", async () => {
+    await mockCurrentConfig({});
+
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        commands: { bash: true, native: "auto" },
+      }),
+    };
+
+    const result = await sanitizeConfigSetForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.commands.bash).toBe(false);
+    expect(sanitized.commands.config).toBe(false);
+    expect(sanitized.commands.debug).toBe(false);
+    expect(sanitized.commands.native).toBe("auto");
+  });
+});
+
+describe("forced sub-keys in sanitizeConfigPatchForHostedMode", () => {
+  it("overrides commands.bash/config/debug in patch", () => {
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        commands: { bash: true, config: true, debug: true, restart: true },
+      }),
+    };
+
+    const result = sanitizeConfigPatchForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.commands.bash).toBe(false);
+    expect(sanitized.commands.config).toBe(false);
+    expect(sanitized.commands.debug).toBe(false);
+    // Non-forced sub-keys pass through
+    expect(sanitized.commands.restart).toBe(true);
+  });
+
+  it("does not create commands section if not in patch", () => {
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        agents: { list: [] },
+      }),
+    };
+
+    const result = sanitizeConfigPatchForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.commands).toBeUndefined();
+    expect(sanitized.agents).toEqual({ list: [] });
+  });
+});
+
+describe("HOSTED_MODE_FORCED_DEEP_PATHS", () => {
+  it("forces sandbox Docker network and readOnlyRoot", () => {
+    expect(HOSTED_MODE_FORCED_DEEP_PATHS["agents.defaults.sandbox.docker.network"]).toBe("none");
+    expect(HOSTED_MODE_FORCED_DEEP_PATHS["agents.defaults.sandbox.docker.readOnlyRoot"]).toBe(true);
+  });
+});
+
+describe("forced deep paths in sanitizeConfigSetForHostedMode", () => {
+  it("forces sandbox Docker network to 'none' when agents.defaults.sandbox.docker exists", async () => {
+    await mockCurrentConfig({});
+
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        agents: {
+          defaults: {
+            sandbox: {
+              docker: {
+                network: "host",
+                readOnlyRoot: false,
+                image: "node:20",
+              },
+            },
+          },
+        },
+      }),
+    };
+
+    const result = await sanitizeConfigSetForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.agents.defaults.sandbox.docker.network).toBe("none");
+    expect(sanitized.agents.defaults.sandbox.docker.readOnlyRoot).toBe(true);
+    // Non-forced sandbox settings pass through
+    expect(sanitized.agents.defaults.sandbox.docker.image).toBe("node:20");
+  });
+
+  it("skips deep path forcing gracefully if intermediate objects don't exist", async () => {
+    await mockCurrentConfig({});
+
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        agents: { list: [{ id: "main" }] },
+      }),
+    };
+
+    const result = await sanitizeConfigSetForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    // agents exists but defaults/sandbox/docker path doesn't — no crash, no forced keys injected
+    expect(sanitized.agents.list).toEqual([{ id: "main" }]);
+    expect(sanitized.agents.defaults).toBeUndefined();
+  });
+});
+
+describe("forced deep paths in sanitizeConfigPatchForHostedMode", () => {
+  it("forces sandbox Docker network to 'none' in patch", () => {
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        agents: {
+          defaults: {
+            sandbox: {
+              docker: { network: "bridge", readOnlyRoot: false },
+            },
+          },
+        },
+      }),
+    };
+
+    const result = sanitizeConfigPatchForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.agents.defaults.sandbox.docker.network).toBe("none");
+    expect(sanitized.agents.defaults.sandbox.docker.readOnlyRoot).toBe(true);
+  });
+
+  it("does not inject deep paths when sandbox section is absent", () => {
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        agents: { list: [] },
+      }),
+    };
+
+    const result = sanitizeConfigPatchForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.agents.list).toEqual([]);
+    expect(sanitized.agents.defaults).toBeUndefined();
   });
 });

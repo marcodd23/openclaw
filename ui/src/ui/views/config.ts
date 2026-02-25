@@ -304,6 +304,29 @@ const HOSTED_MODE_ALLOWED_SECTIONS = new Set([
   "models",
 ]);
 
+/**
+ * Specific config field paths hidden in ClawDeck hosted mode.
+ * These are sub-keys within allowed sections that pose security risks
+ * (e.g. shell access, config bypass, debug bypass).
+ */
+const HOSTED_MODE_HIDDEN_PATHS = new Set([
+  // Commands — shell access and config/debug bypass
+  "commands.bash",
+  "commands.bashForegroundMs",
+  "commands.config",
+  "commands.debug",
+  // Sandbox Docker — container escape vectors
+  "agents.defaults.sandbox.docker.binds",
+  "agents.defaults.sandbox.docker.network",
+  "agents.defaults.sandbox.docker.capDrop",
+  "agents.defaults.sandbox.docker.user",
+  "agents.defaults.sandbox.docker.extraHosts",
+  "agents.defaults.sandbox.docker.dns",
+  // Sandbox Browser — container escape vectors
+  "agents.defaults.sandbox.browser.binds",
+  "agents.defaults.sandbox.browser.network",
+]);
+
 // Section definitions
 const SECTIONS: Array<{ key: string; label: string }> = [
   { key: "env", label: "Environment" },
@@ -822,6 +845,7 @@ export function renderConfig(props: ConfigProps) {
                           ? HOSTED_MODE_ALLOWED_SECTIONS
                           : undefined,
                         hideUnsupported: props.hostedMode,
+                        hiddenPaths: props.hostedMode ? HOSTED_MODE_HIDDEN_PATHS : undefined,
                       })
                 }
                 ${
