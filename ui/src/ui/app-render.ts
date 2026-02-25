@@ -1079,6 +1079,7 @@ export function renderApp(state: AppViewState) {
                 searchQuery: state.configSearchQuery,
                 activeSection: state.configActiveSection,
                 activeSubsection: state.configActiveSubsection,
+                hostedMode: state.hostedMode,
                 onRawChange: (next) => {
                   state.configRaw = next;
                 },

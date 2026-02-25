@@ -13,6 +13,12 @@ export type ConfigFormProps = {
   searchQuery?: string;
   activeSection?: string | null;
   activeSubsection?: string | null;
+  /** When set, only sections whose key is in this set are rendered. */
+  allowedSections?: ReadonlySet<string>;
+  /** When true, fields with unsupported schemas are hidden instead of showing an error. */
+  hideUnsupported?: boolean;
+  /** Dot-separated config paths to hide (e.g. "commands.bash"). */
+  hiddenPaths?: ReadonlySet<string>;
   onPatch: (path: Array<string | number>, value: unknown) => void;
 };
 
@@ -330,6 +336,7 @@ export function renderConfigForm(props: ConfigFormProps) {
     `;
   }
   const unsupported = new Set(props.unsupportedPaths ?? []);
+  const hiddenPaths = props.hiddenPaths ?? new Set<string>();
   const properties = schema.properties;
   const searchQuery = props.searchQuery ?? "";
   const searchCriteria = parseConfigSearchQuery(searchQuery);
@@ -346,6 +353,9 @@ export function renderConfigForm(props: ConfigFormProps) {
   });
 
   const filteredEntries = entries.filter(([key, node]) => {
+    if (props.allowedSections && !props.allowedSections.has(key)) {
+      return false;
+    }
     if (activeSection && key !== activeSection) {
       return false;
     }
@@ -430,6 +440,8 @@ export function renderConfigForm(props: ConfigFormProps) {
                     unsupported,
                     disabled: props.disabled ?? false,
                     showLabel: false,
+                    hideUnsupported: props.hideUnsupported,
+                    hiddenPaths,
                     searchCriteria,
                     onPatch: props.onPatch,
                   })}
@@ -465,6 +477,8 @@ export function renderConfigForm(props: ConfigFormProps) {
                     unsupported,
                     disabled: props.disabled ?? false,
                     showLabel: false,
+                    hideUnsupported: props.hideUnsupported,
+                    hiddenPaths,
                     searchCriteria,
                     onPatch: props.onPatch,
                   })}

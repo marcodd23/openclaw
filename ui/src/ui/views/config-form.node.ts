@@ -330,6 +330,8 @@ export function renderNode(params: {
   unsupported: Set<string>;
   disabled: boolean;
   showLabel?: boolean;
+  /** When true, unsupported fields are hidden instead of showing an error. */
+  hideUnsupported?: boolean;
   searchCriteria?: ConfigSearchCriteria;
   onPatch: (path: Array<string | number>, value: unknown) => void;
 }): TemplateResult | typeof nothing {
@@ -341,6 +343,9 @@ export function renderNode(params: {
   const criteria = params.searchCriteria;
 
   if (unsupported.has(key)) {
+    if (params.hideUnsupported) {
+      return nothing;
+    }
     return html`<div class="cfg-field cfg-field--error">
       <div class="cfg-field__label">${label}</div>
       <div class="cfg-field__error">Unsupported schema node. Use Raw mode.</div>
@@ -753,6 +758,7 @@ function renderObject(params: {
         hints,
         unsupported,
         disabled,
+        hideUnsupported: params.hideUnsupported,
         searchCriteria: childSearchCriteria,
         onPatch,
       }),
@@ -898,6 +904,7 @@ function renderArray(params: {
                   hints,
                   unsupported,
                   disabled,
+                  hideUnsupported: params.hideUnsupported,
                   searchCriteria: childSearchCriteria,
                   showLabel: false,
                   onPatch,
@@ -1056,6 +1063,7 @@ function renderMapField(params: {
                           hints,
                           unsupported,
                           disabled,
+                          hideUnsupported: params.hideUnsupported,
                           searchCriteria,
                           showLabel: false,
                           onPatch,

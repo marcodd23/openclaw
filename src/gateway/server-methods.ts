@@ -1,5 +1,9 @@
 import { formatControlPlaneActor, resolveControlPlaneActor } from "./control-plane-audit.js";
 import { consumeControlPlaneWriteBudget } from "./control-plane-rate-limit.js";
+import {
+  sanitizeConfigPatchForHostedMode,
+  sanitizeConfigSetForHostedMode,
+} from "./hosted-mode-config-guard.js";
 import { ADMIN_SCOPE, authorizeOperatorScopesForMethod } from "./method-scopes.js";
 import { ErrorCodes, errorShape } from "./protocol/index.js";
 import { isRoleAuthorizedForMethod, parseGatewayRole } from "./role-policy.js";
@@ -40,12 +44,7 @@ const CONTROL_PLANE_WRITE_METHODS = new Set(["config.apply", "config.patch", "up
  * clients (the ClawDeck Go API) are exempt because they connect with
  * platform: "server".
  */
-const HOSTED_MODE_BLOCKED_METHODS = new Set([
-  "config.set",
-  "config.patch",
-  "config.apply",
-  "update.run",
-]);
+const HOSTED_MODE_BLOCKED_METHODS = new Set(["config.apply", "update.run"]);
 function authorizeGatewayMethod(method: string, client: GatewayRequestOptions["client"]) {
   if (!client?.connect) {
     return null;
@@ -127,6 +126,17 @@ export async function handleGatewayRequest(
       errorShape(ErrorCodes.INVALID_REQUEST, `${req.method} is not available in hosted mode`),
     );
     return;
+  }
+  // Sanitize config operations in hosted mode: preserve restricted keys.
+  if (process.env.CLAWDECK_HOSTED === "true" && client?.connect?.client?.platform !== "server") {
+    const params = (req.params ?? {}) as Record<string, unknown>;
+    if (req.method === "config.set") {
+      await sanitizeConfigSetForHostedMode(params);
+      req.params = params;
+    } else if (req.method === "config.patch") {
+      sanitizeConfigPatchForHostedMode(params);
+      req.params = params;
+    }
   }
   if (CONTROL_PLANE_WRITE_METHODS.has(req.method)) {
     const budget = consumeControlPlaneWriteBudget({ client });

@@ -190,10 +190,10 @@ describe("TAB_GROUPS", () => {
 });
 
 describe("filterTabGroupsForHostedMode", () => {
-  it("removes config and debug tabs", () => {
+  it("removes debug tab but keeps config", () => {
     const filtered = filterTabGroupsForHostedMode(TAB_GROUPS);
     const allTabs = filtered.flatMap((g) => g.tabs);
-    expect(allTabs).not.toContain("config");
+    expect(allTabs).toContain("config");
     expect(allTabs).not.toContain("debug");
   });
 
@@ -211,19 +211,20 @@ describe("filterTabGroupsForHostedMode", () => {
     expect(allTabs).toContain("skills");
     expect(allTabs).toContain("nodes");
     expect(allTabs).toContain("logs");
+    expect(allTabs).toContain("config");
   });
 
-  it("retains settings group with only logs tab", () => {
+  it("retains settings group with config and logs tabs", () => {
     const filtered = filterTabGroupsForHostedMode(TAB_GROUPS);
     const settingsGroup = filtered.find((g) => g.label === "settings");
     expect(settingsGroup).toBeDefined();
-    expect(settingsGroup!.tabs).toEqual(["logs"]);
+    expect(settingsGroup!.tabs).toEqual(["config", "logs"]);
   });
 
   it("removes groups that become empty", () => {
-    // Create a synthetic group with only config and debug
+    // Create a synthetic group with only debug
     const testGroups = [
-      { label: "only-blocked", tabs: ["config", "debug"] },
+      { label: "only-blocked", tabs: ["debug"] },
       { label: "chat", tabs: ["chat"] },
     ] as unknown as typeof TAB_GROUPS;
     const filtered = filterTabGroupsForHostedMode(testGroups);
