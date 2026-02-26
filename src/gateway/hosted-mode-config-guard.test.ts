@@ -447,6 +447,10 @@ describe("HOSTED_MODE_FORCED_DEEP_PATHS", () => {
     expect(HOSTED_MODE_FORCED_DEEP_PATHS["agents.defaults.sandbox.docker.network"]).toBe("none");
     expect(HOSTED_MODE_FORCED_DEEP_PATHS["agents.defaults.sandbox.docker.readOnlyRoot"]).toBe(true);
   });
+
+  it("forces tools.fs.workspaceOnly to true", () => {
+    expect(HOSTED_MODE_FORCED_DEEP_PATHS["tools.fs.workspaceOnly"]).toBe(true);
+  });
 });
 
 describe("forced deep paths in sanitizeConfigSetForHostedMode", () => {
@@ -533,5 +537,51 @@ describe("forced deep paths in sanitizeConfigPatchForHostedMode", () => {
     const sanitized = JSON.parse(params.raw as string);
     expect(sanitized.agents.list).toEqual([]);
     expect(sanitized.agents.defaults).toBeUndefined();
+  });
+});
+
+describe("tools.fs.workspaceOnly forced deep path", () => {
+  it("forces workspaceOnly to true in config.set when tools.fs exists", async () => {
+    await mockCurrentConfig({});
+
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        tools: { fs: { workspaceOnly: false } },
+      }),
+    };
+
+    const result = await sanitizeConfigSetForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.tools.fs.workspaceOnly).toBe(true);
+  });
+
+  it("forces workspaceOnly to true in config.patch when tools.fs exists", () => {
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        tools: { fs: { workspaceOnly: false } },
+      }),
+    };
+
+    const result = sanitizeConfigPatchForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.tools.fs.workspaceOnly).toBe(true);
+  });
+
+  it("does not inject tools.fs.workspaceOnly when tools section is absent", () => {
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        agents: { list: [] },
+      }),
+    };
+
+    const result = sanitizeConfigPatchForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.tools).toBeUndefined();
   });
 });

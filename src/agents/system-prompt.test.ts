@@ -635,3 +635,47 @@ describe("buildSubagentSystemPrompt", () => {
     }
   });
 });
+
+describe("hostedMode preamble", () => {
+  it("injects platform constraints section when hostedMode is true", () => {
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/workspace",
+      hostedMode: true,
+    });
+    expect(prompt).toContain("## Platform Constraints (ClawDeck Hosted");
+    expect(prompt).toContain("NEVER read, write, edit, or delete files outside");
+    expect(prompt).toContain("NEVER modify, overwrite, or create files at ~/.openclaw/");
+    expect(prompt).toContain("openclaw.json");
+    expect(prompt).toContain("NEVER use path traversal");
+    expect(prompt).toContain("NEVER attempt to access, read, or enumerate other tenants");
+    expect(prompt).toContain("managed by ClawDeck");
+  });
+
+  it("does not inject platform constraints when hostedMode is false", () => {
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/workspace",
+      hostedMode: false,
+    });
+    expect(prompt).not.toContain("Platform Constraints");
+    expect(prompt).not.toContain("ClawDeck Hosted");
+  });
+
+  it("does not inject platform constraints when hostedMode is omitted", () => {
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/workspace",
+    });
+    expect(prompt).not.toContain("Platform Constraints");
+  });
+
+  it("places preamble before the Tooling section", () => {
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/workspace",
+      hostedMode: true,
+    });
+    const preambleIdx = prompt.indexOf("## Platform Constraints");
+    const toolingIdx = prompt.indexOf("## Tooling");
+    expect(preambleIdx).toBeGreaterThan(-1);
+    expect(toolingIdx).toBeGreaterThan(-1);
+    expect(preambleIdx).toBeLessThan(toolingIdx);
+  });
+});

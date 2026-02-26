@@ -327,6 +327,8 @@ const HOSTED_MODE_HIDDEN_PATHS = new Set([
   "agents.defaults.sandbox.browser.network",
   // Models — AWS Bedrock discovery (irrelevant for hosted tenants)
   "models.bedrockDiscovery",
+  // File tools — workspace restriction is platform-enforced
+  "tools.fs.workspaceOnly",
 ]);
 
 // Section definitions

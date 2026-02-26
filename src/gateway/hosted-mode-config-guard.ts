@@ -45,6 +45,9 @@ export const HOSTED_MODE_FORCED_SUBKEYS: Record<string, Record<string, unknown>>
 export const HOSTED_MODE_FORCED_DEEP_PATHS: Record<string, unknown> = {
   "agents.defaults.sandbox.docker.network": "none",
   "agents.defaults.sandbox.docker.readOnlyRoot": true,
+  // Restrict agent file tools to the workspace directory — prevents writing
+  // to config files or other paths outside the per-tenant workspace on JuiceFS.
+  "tools.fs.workspaceOnly": true,
 };
 
 /**
