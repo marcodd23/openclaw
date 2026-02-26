@@ -309,7 +309,7 @@ export function renderApp(state: AppViewState) {
       </aside>
       <main class="content ${isChat ? "content--chat" : ""}">
         ${
-          availableUpdate
+          availableUpdate && !state.hostedMode
             ? html`<div class="update-banner callout danger" role="alert">
               <strong>Update available:</strong> v${availableUpdate.latestVersion}
               (running v${availableUpdate.currentVersion}).

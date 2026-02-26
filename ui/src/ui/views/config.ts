@@ -325,6 +325,8 @@ const HOSTED_MODE_HIDDEN_PATHS = new Set([
   // Sandbox Browser — container escape vectors
   "agents.defaults.sandbox.browser.binds",
   "agents.defaults.sandbox.browser.network",
+  // Models — AWS Bedrock discovery (irrelevant for hosted tenants)
+  "models.bedrockDiscovery",
 ]);
 
 // Section definitions
