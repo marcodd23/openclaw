@@ -1,5 +1,9 @@
 import { formatControlPlaneActor, resolveControlPlaneActor } from "./control-plane-audit.js";
 import { consumeControlPlaneWriteBudget } from "./control-plane-rate-limit.js";
+import {
+  sanitizeConfigPatchForHostedMode,
+  sanitizeConfigSetForHostedMode,
+} from "./hosted-mode-config-guard.js";
 import { ADMIN_SCOPE, authorizeOperatorScopesForMethod } from "./method-scopes.js";
 import { ErrorCodes, errorShape } from "./protocol/index.js";
 import { isRoleAuthorizedForMethod, parseGatewayRole } from "./role-policy.js";
@@ -33,6 +37,14 @@ import { webHandlers } from "./server-methods/web.js";
 import { wizardHandlers } from "./server-methods/wizard.js";
 
 const CONTROL_PLANE_WRITE_METHODS = new Set(["config.apply", "config.patch", "update.run"]);
+
+/**
+ * RPC methods blocked for browser Control UI connections when the gateway
+ * runs in ClawDeck hosted mode (CLAWDECK_HOSTED=true). Internal operator
+ * clients (the ClawDeck Go API) are exempt because they connect with
+ * platform: "server".
+ */
+const HOSTED_MODE_BLOCKED_METHODS = new Set(["config.apply", "update.run"]);
 function authorizeGatewayMethod(method: string, client: GatewayRequestOptions["client"]) {
   if (!client?.connect) {
     return null;
@@ -100,6 +112,31 @@ export async function handleGatewayRequest(
   if (authError) {
     respond(false, undefined, authError);
     return;
+  }
+  // Block dangerous methods for browser Control UI in ClawDeck hosted mode.
+  // The Go API connects with platform: "server" and is exempt.
+  if (
+    process.env.CLAWDECK_HOSTED === "true" &&
+    HOSTED_MODE_BLOCKED_METHODS.has(req.method) &&
+    client?.connect?.client?.platform !== "server"
+  ) {
+    respond(
+      false,
+      undefined,
+      errorShape(ErrorCodes.INVALID_REQUEST, `${req.method} is not available in hosted mode`),
+    );
+    return;
+  }
+  // Sanitize config operations in hosted mode: preserve restricted keys.
+  if (process.env.CLAWDECK_HOSTED === "true" && client?.connect?.client?.platform !== "server") {
+    const params = (req.params ?? {}) as Record<string, unknown>;
+    if (req.method === "config.set") {
+      await sanitizeConfigSetForHostedMode(params);
+      req.params = params;
+    } else if (req.method === "config.patch") {
+      sanitizeConfigPatchForHostedMode(params);
+      req.params = params;
+    }
   }
   if (CONTROL_PLANE_WRITE_METHODS.has(req.method)) {
     const budget = consumeControlPlaneWriteBudget({ client });

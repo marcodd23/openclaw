@@ -22,6 +22,7 @@ describe("loadControlUiBootstrapConfig", () => {
       assistantName: "Assistant",
       assistantAvatar: null,
       assistantAgentId: null,
+      hostedMode: false,
     };
 
     await loadControlUiBootstrapConfig(state);
@@ -46,6 +47,7 @@ describe("loadControlUiBootstrapConfig", () => {
       assistantName: "Assistant",
       assistantAvatar: null,
       assistantAgentId: null,
+      hostedMode: false,
     };
 
     await loadControlUiBootstrapConfig(state);
@@ -68,6 +70,7 @@ describe("loadControlUiBootstrapConfig", () => {
       assistantName: "Assistant",
       assistantAvatar: null,
       assistantAgentId: null,
+      hostedMode: false,
     };
 
     await loadControlUiBootstrapConfig(state);
@@ -76,6 +79,61 @@ describe("loadControlUiBootstrapConfig", () => {
       `/openclaw${CONTROL_UI_BOOTSTRAP_CONFIG_PATH}`,
       expect.objectContaining({ method: "GET" }),
     );
+
+    vi.unstubAllGlobals();
+  });
+
+  it("sets hostedMode to true when bootstrap response includes hostedMode", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        basePath: "",
+        assistantName: "Bot",
+        assistantAvatar: null,
+        assistantAgentId: "main",
+        hostedMode: true,
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
+
+    const state = {
+      basePath: "",
+      assistantName: "Assistant",
+      assistantAvatar: null,
+      assistantAgentId: null,
+      hostedMode: false,
+    };
+
+    await loadControlUiBootstrapConfig(state);
+
+    expect(state.hostedMode).toBe(true);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps hostedMode false when response omits hostedMode", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        basePath: "",
+        assistantName: "Bot",
+        assistantAvatar: null,
+        assistantAgentId: "main",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
+
+    const state = {
+      basePath: "",
+      assistantName: "Assistant",
+      assistantAvatar: null,
+      assistantAgentId: null,
+      hostedMode: false,
+    };
+
+    await loadControlUiBootstrapConfig(state);
+
+    expect(state.hostedMode).toBe(false);
 
     vi.unstubAllGlobals();
   });

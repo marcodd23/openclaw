@@ -19,6 +19,8 @@ export type OverviewProps = {
   cronEnabled: boolean | null;
   cronNext: number | null;
   lastChannelsRefresh: number | null;
+  /** When true, infrastructure fields (gateway URL, session key) are read-only. */
+  hostedMode: boolean;
   onSettingsChange: (next: UiSettings) => void;
   onPasswordChange: (next: string) => void;
   onSessionKeyChange: (next: string) => void;
@@ -203,10 +205,15 @@ export function renderOverview(props: OverviewProps) {
             <input
               .value=${props.settings.gatewayUrl}
               @input=${(e: Event) => {
+                if (props.hostedMode) {
+                  return;
+                }
                 const v = (e.target as HTMLInputElement).value;
                 props.onSettingsChange({ ...props.settings, gatewayUrl: v });
               }}
               placeholder="ws://100.x.y.z:18789"
+              ?disabled=${props.hostedMode}
+              title=${props.hostedMode ? "Managed by ClawDeck — cannot be changed in hosted mode" : ""}
             />
           </label>
           ${
@@ -243,9 +250,14 @@ export function renderOverview(props: OverviewProps) {
             <input
               .value=${props.settings.sessionKey}
               @input=${(e: Event) => {
+                if (props.hostedMode) {
+                  return;
+                }
                 const v = (e.target as HTMLInputElement).value;
                 props.onSessionKeyChange(v);
               }}
+              ?disabled=${props.hostedMode}
+              title=${props.hostedMode ? "Managed by ClawDeck — cannot be changed in hosted mode" : ""}
             />
           </label>
           <label class="field">

@@ -10,6 +10,8 @@ export type ControlUiBootstrapState = {
   assistantName: string;
   assistantAvatar: string | null;
   assistantAgentId: string | null;
+  /** True when the gateway runs in ClawDeck hosted mode. */
+  hostedMode: boolean;
 };
 
 export async function loadControlUiBootstrapConfig(state: ControlUiBootstrapState) {
@@ -43,6 +45,7 @@ export async function loadControlUiBootstrapConfig(state: ControlUiBootstrapStat
     state.assistantName = normalized.name;
     state.assistantAvatar = normalized.avatar;
     state.assistantAgentId = normalized.agentId ?? null;
+    state.hostedMode = (parsed as Record<string, unknown>).hostedMode === true;
   } catch {
     // Ignore bootstrap failures; UI will update identity after connecting.
   }

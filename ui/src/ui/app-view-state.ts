@@ -60,6 +60,8 @@ export type AppViewState = {
   assistantName: string;
   assistantAvatar: string | null;
   assistantAgentId: string | null;
+  /** True when the gateway runs in ClawDeck hosted mode. */
+  hostedMode: boolean;
   sessionKey: string;
   chatLoading: boolean;
   chatSending: boolean;

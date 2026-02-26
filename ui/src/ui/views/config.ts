@@ -23,6 +23,8 @@ export type ConfigProps = {
   searchQuery: string;
   activeSection: string | null;
   activeSubsection: string | null;
+  /** When true, infrastructure-managed sections are hidden and Raw/Apply/Update controls are removed. */
+  hostedMode?: boolean;
   onRawChange: (next: string) => void;
   onFormModeChange: (mode: "form" | "raw") => void;
   onFormPatch: (path: Array<string | number>, value: unknown) => void;
@@ -281,6 +283,54 @@ const sidebarIcons = {
   `,
 };
 
+/**
+ * Config section keys that tenants are allowed to edit in ClawDeck hosted mode.
+ * Whitelist approach: anything NOT in this set is hidden, so unknown/new
+ * infrastructure sections from the schema are automatically filtered out.
+ */
+const HOSTED_MODE_ALLOWED_SECTIONS = new Set([
+  "agents",
+  "messages",
+  "commands",
+  "hooks",
+  "skills",
+  "tools",
+  "session",
+  "cron",
+  "audio",
+  "talk",
+  "broadcast",
+  "ui",
+  "models",
+]);
+
+/**
+ * Specific config field paths hidden in ClawDeck hosted mode.
+ * These are sub-keys within allowed sections that pose security risks
+ * (e.g. shell access, config bypass, debug bypass).
+ */
+const HOSTED_MODE_HIDDEN_PATHS = new Set([
+  // Commands — shell access and config/debug bypass
+  "commands.bash",
+  "commands.bashForegroundMs",
+  "commands.config",
+  "commands.debug",
+  // Sandbox Docker — container escape vectors
+  "agents.defaults.sandbox.docker.binds",
+  "agents.defaults.sandbox.docker.network",
+  "agents.defaults.sandbox.docker.capDrop",
+  "agents.defaults.sandbox.docker.user",
+  "agents.defaults.sandbox.docker.extraHosts",
+  "agents.defaults.sandbox.docker.dns",
+  // Sandbox Browser — container escape vectors
+  "agents.defaults.sandbox.browser.binds",
+  "agents.defaults.sandbox.browser.network",
+  // Models — AWS Bedrock discovery (irrelevant for hosted tenants)
+  "models.bedrockDiscovery",
+  // File tools — workspace restriction is platform-enforced
+  "tools.fs.workspaceOnly",
+]);
+
 // Section definitions
 const SECTIONS: Array<{ key: string; label: string }> = [
   { key: "env", label: "Environment" },
@@ -418,6 +468,9 @@ export function renderConfig(props: ConfigProps) {
     .map((k) => ({ key: k, label: k.charAt(0).toUpperCase() + k.slice(1) }));
 
   const allSections = [...availableSections, ...extraSections];
+  const visibleSections = props.hostedMode
+    ? allSections.filter((s) => HOSTED_MODE_ALLOWED_SECTIONS.has(s.key))
+    : allSections;
 
   const activeSectionSchema =
     props.activeSection && analysis.schema && schemaType(analysis.schema) === "object"
@@ -576,7 +629,7 @@ export function renderConfig(props: ConfigProps) {
             <span class="config-nav__icon">${sidebarIcons.all}</span>
             <span class="config-nav__label">All Settings</span>
           </button>
-          ${allSections.map(
+          ${visibleSections.map(
             (section) => html`
               <button
                 class="config-nav__item ${props.activeSection === section.key ? "active" : ""}"
@@ -591,24 +644,30 @@ export function renderConfig(props: ConfigProps) {
           )}
         </nav>
 
-        <!-- Mode toggle at bottom -->
-        <div class="config-sidebar__footer">
-          <div class="config-mode-toggle">
-            <button
-              class="config-mode-toggle__btn ${props.formMode === "form" ? "active" : ""}"
-              ?disabled=${props.schemaLoading || !props.schema}
-              @click=${() => props.onFormModeChange("form")}
-            >
-              Form
-            </button>
-            <button
-              class="config-mode-toggle__btn ${props.formMode === "raw" ? "active" : ""}"
-              @click=${() => props.onFormModeChange("raw")}
-            >
-              Raw
-            </button>
+        <!-- Mode toggle at bottom (hidden in hosted mode — always form) -->
+        ${
+          props.hostedMode
+            ? nothing
+            : html`
+          <div class="config-sidebar__footer">
+            <div class="config-mode-toggle">
+              <button
+                class="config-mode-toggle__btn ${props.formMode === "form" ? "active" : ""}"
+                ?disabled=${props.schemaLoading || !props.schema}
+                @click=${() => props.onFormModeChange("form")}
+              >
+                Form
+              </button>
+              <button
+                class="config-mode-toggle__btn ${props.formMode === "raw" ? "active" : ""}"
+                @click=${() => props.onFormModeChange("raw")}
+              >
+                Raw
+              </button>
+            </div>
           </div>
-        </div>
+        `
+        }
       </aside>
 
       <!-- Main content -->
@@ -647,20 +706,26 @@ export function renderConfig(props: ConfigProps) {
             >
               ${props.saving ? "Saving…" : "Save"}
             </button>
-            <button
-              class="btn btn--sm"
-              ?disabled=${!canApply}
-              @click=${props.onApply}
-            >
-              ${props.applying ? "Applying…" : "Apply"}
-            </button>
-            <button
-              class="btn btn--sm"
-              ?disabled=${!canUpdate}
-              @click=${props.onUpdate}
-            >
-              ${props.updating ? "Updating…" : "Update"}
-            </button>
+            ${
+              props.hostedMode
+                ? nothing
+                : html`
+              <button
+                class="btn btn--sm"
+                ?disabled=${!canApply}
+                @click=${props.onApply}
+              >
+                ${props.applying ? "Applying…" : "Apply"}
+              </button>
+              <button
+                class="btn btn--sm"
+                ?disabled=${!canUpdate}
+                @click=${props.onUpdate}
+              >
+                ${props.updating ? "Updating…" : "Update"}
+              </button>
+            `
+            }
           </div>
         </div>
 
@@ -780,10 +845,15 @@ export function renderConfig(props: ConfigProps) {
                         searchQuery: props.searchQuery,
                         activeSection: props.activeSection,
                         activeSubsection: effectiveSubsection,
+                        allowedSections: props.hostedMode
+                          ? HOSTED_MODE_ALLOWED_SECTIONS
+                          : undefined,
+                        hideUnsupported: props.hostedMode,
+                        hiddenPaths: props.hostedMode ? HOSTED_MODE_HIDDEN_PATHS : undefined,
                       })
                 }
                 ${
-                  formUnsafe
+                  formUnsafe && !props.hostedMode
                     ? html`
                         <div class="callout danger" style="margin-top: 12px">
                           Form view can't safely edit some fields. Use Raw to avoid losing config entries.

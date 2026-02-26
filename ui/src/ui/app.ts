@@ -135,6 +135,8 @@ export class OpenClawApp extends LitElement {
   @state() assistantName = bootAssistantIdentity.name;
   @state() assistantAvatar = bootAssistantIdentity.avatar;
   @state() assistantAgentId = bootAssistantIdentity.agentId ?? null;
+  /** True when the gateway runs in ClawDeck hosted mode (hides config/debug tabs). */
+  @state() hostedMode = false;
 
   @state() sessionKey = this.settings.sessionKey;
   @state() chatLoading = false;

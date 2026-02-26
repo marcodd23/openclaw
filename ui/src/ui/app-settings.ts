@@ -59,6 +59,8 @@ type SettingsHost = {
   themeMedia: MediaQueryList | null;
   themeMediaHandler: ((event: MediaQueryListEvent) => void) | null;
   pendingGatewayUrl?: string | null;
+  /** True when the gateway runs in ClawDeck hosted mode. */
+  hostedMode?: boolean;
 };
 
 export function applySettings(host: SettingsHost, next: UiSettings) {
@@ -131,7 +133,8 @@ export function applySettingsFromUrl(host: SettingsHost) {
 
   if (gatewayUrlRaw != null) {
     const gatewayUrl = gatewayUrlRaw.trim();
-    if (gatewayUrl && gatewayUrl !== host.settings.gatewayUrl) {
+    // In hosted mode the gateway URL is platform-managed — ignore URL-param overrides.
+    if (!host.hostedMode && gatewayUrl && gatewayUrl !== host.settings.gatewayUrl) {
       host.pendingGatewayUrl = gatewayUrl;
     }
     params.delete("gatewayUrl");
