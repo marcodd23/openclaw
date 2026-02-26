@@ -7,6 +7,12 @@ export function renderGatewayUrlConfirmation(state: AppViewState) {
     return nothing;
   }
 
+  // In hosted mode, silently reject gateway URL changes — the URL is platform-managed.
+  if (state.hostedMode) {
+    state.handleGatewayUrlCancel();
+    return nothing;
+  }
+
   return html`
     <div class="exec-approval-overlay" role="dialog" aria-modal="true" aria-live="polite">
       <div class="exec-approval-card">

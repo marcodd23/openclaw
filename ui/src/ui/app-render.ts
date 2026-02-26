@@ -346,6 +346,7 @@ export function renderApp(state: AppViewState) {
                 cronEnabled: state.cronStatus?.enabled ?? null,
                 cronNext,
                 lastChannelsRefresh: state.channelsLastSuccess,
+                hostedMode: state.hostedMode,
                 onSettingsChange: (next) => state.applySettings(next),
                 onPasswordChange: (next) => (state.password = next),
                 onSessionKeyChange: (next) => {
