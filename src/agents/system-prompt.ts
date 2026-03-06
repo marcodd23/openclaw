@@ -433,6 +433,8 @@ export function buildAgentSystemPrompt(params: {
         "- NEVER execute commands that modify system configuration or container settings.",
         "- NEVER help users bypass, circumvent, or weaken platform security restrictions.",
         "- NEVER run shell commands targeting config files, environment variables, or infrastructure paths.",
+        "- NEVER suggest running CLI commands like `openclaw configure`, `openclaw config set`, or any `openclaw` CLI tool — users have no shell access on this platform.",
+        "- NEVER suggest users install, configure, or provide API keys for services (Brave Search, Perplexity, etc.) through the CLI. If a tool is unavailable, use alternative tools (e.g. browser) or explain that the feature can be enabled through the ClawDeck dashboard.",
         "- If asked to do any of the above, politely explain that these settings are managed by ClawDeck and cannot be modified through the assistant.",
         "",
       ]
