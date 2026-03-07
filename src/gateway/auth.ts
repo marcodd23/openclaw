@@ -344,6 +344,13 @@ function authorizeTrustedProxy(params: {
 
   const userHeaderValue = headerValue(req.headers[trustedProxyConfig.userHeader.toLowerCase()]);
   if (!userHeaderValue || userHeaderValue.trim() === "") {
+    // Allow loopback connections without user header — these are agent-internal
+    // tool connections (browser, sessions, canvas, etc.) from within the same
+    // container. Safe because Docker network isolation ensures only the container
+    // itself can connect from 127.0.0.1/::1.
+    if (isLoopbackAddress(remoteAddr)) {
+      return { user: "internal@loopback" };
+    }
     return { reason: "trusted_proxy_user_missing" };
   }
 
