@@ -27,6 +27,10 @@ import {
 import { isDiagnosticsEnabled } from "../infra/diagnostic-events.js";
 import { logAcceptedEnvOption } from "../infra/env.js";
 import { createExecApprovalForwarder } from "../infra/exec-approval-forwarder.js";
+import {
+  classifyNotificationCategory,
+  pushGatewayNotification,
+} from "../infra/gateway-notifications.js";
 import { onHeartbeatEvent } from "../infra/heartbeat-events.js";
 import { startHeartbeatRunner, type HeartbeatRunner } from "../infra/heartbeat-runner.js";
 import { getMachineDisplayName } from "../infra/machine-name.js";
@@ -515,6 +519,22 @@ export async function startGatewayServer(
         }),
       );
 
+  // Capture agent lifecycle errors into the gateway notification buffer so
+  // the ClawDeck dashboard can surface billing/rate-limit/auth failures.
+  const notifUnsub = minimalTestGateway
+    ? null
+    : onAgentEvent((evt) => {
+        if (evt.stream !== "lifecycle" || evt.data?.phase !== "error") {
+          return;
+        }
+        const errorText = typeof evt.data?.error === "string" ? (evt.data.error as string) : "";
+        if (!errorText) {
+          return;
+        }
+        const { category, level } = classifyNotificationCategory(errorText);
+        pushGatewayNotification(level, category, errorText);
+      });
+
   const heartbeatUnsub = minimalTestGateway
     ? null
     : onHeartbeatEvent((evt) => {
@@ -747,7 +767,10 @@ export async function startGatewayServer(
     tickInterval,
     healthInterval,
     dedupeCleanup,
-    agentUnsub,
+    agentUnsub: () => {
+      agentUnsub?.();
+      notifUnsub?.();
+    },
     heartbeatUnsub,
     chatRunState,
     clients,

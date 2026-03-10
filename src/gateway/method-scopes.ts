@@ -74,6 +74,7 @@ const METHOD_SCOPE_GROUPS: Record<OperatorScope, readonly string[]> = {
     "talk.config",
     "agents.files.list",
     "agents.files.get",
+    "notifications.list",
   ],
   [WRITE_SCOPE]: [
     "send",
