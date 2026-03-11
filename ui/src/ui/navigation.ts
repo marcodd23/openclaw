@@ -164,7 +164,7 @@ export function subtitleForTab(tab: Tab) {
   return t(`subtitles.${tab}`);
 }
 
-/** Tabs hidden when the gateway runs in ClawDeck hosted mode. */
+/** Tabs hidden when the gateway runs in Chelar hosted mode. */
 const HOSTED_MODE_HIDDEN_TABS: ReadonlySet<string> = new Set(["debug"]);
 
 /** Returns tab groups with hosted-mode-restricted tabs removed. */

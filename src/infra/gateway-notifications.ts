@@ -2,7 +2,7 @@
  * Gateway-wide in-memory ring buffer for runtime notifications (billing errors,
  * rate limits, auth failures, context overflow). Unlike system-events.ts (which
  * is session-scoped and drained), this is a peek-only, gateway-scoped buffer
- * surfaced via the `notifications.list` RPC to the ClawDeck control plane.
+ * surfaced via the `notifications.list` RPC to the Chelar control plane.
  */
 
 import {

@@ -535,7 +535,7 @@ export async function runEmbeddedAttempt(
       userTimeFormat,
       contextFiles,
       memoryCitationsMode: params.config?.memory?.citations,
-      hostedMode: process.env.CLAWDECK_HOSTED === "true",
+      hostedMode: process.env.CHELAR_HOSTED === "true",
     });
     const systemPromptReport = buildSystemPromptReport({
       source: "run",

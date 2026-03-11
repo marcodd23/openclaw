@@ -284,7 +284,7 @@ const sidebarIcons = {
 };
 
 /**
- * Config section keys that tenants are allowed to edit in ClawDeck hosted mode.
+ * Config section keys that tenants are allowed to edit in Chelar hosted mode.
  * Whitelist approach: anything NOT in this set is hidden, so unknown/new
  * infrastructure sections from the schema are automatically filtered out.
  */
@@ -305,7 +305,7 @@ const HOSTED_MODE_ALLOWED_SECTIONS = new Set([
 ]);
 
 /**
- * Specific config field paths hidden in ClawDeck hosted mode.
+ * Specific config field paths hidden in Chelar hosted mode.
  * These are sub-keys within allowed sections that pose security risks
  * (e.g. shell access, config bypass, debug bypass).
  */

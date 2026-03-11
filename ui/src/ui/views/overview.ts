@@ -213,7 +213,7 @@ export function renderOverview(props: OverviewProps) {
               }}
               placeholder="ws://100.x.y.z:18789"
               ?disabled=${props.hostedMode}
-              title=${props.hostedMode ? "Managed by ClawDeck — cannot be changed in hosted mode" : ""}
+              title=${props.hostedMode ? "Managed by Chelar — cannot be changed in hosted mode" : ""}
             />
           </label>
           ${
@@ -257,7 +257,7 @@ export function renderOverview(props: OverviewProps) {
                 props.onSessionKeyChange(v);
               }}
               ?disabled=${props.hostedMode}
-              title=${props.hostedMode ? "Managed by ClawDeck — cannot be changed in hosted mode" : ""}
+              title=${props.hostedMode ? "Managed by Chelar — cannot be changed in hosted mode" : ""}
             />
           </label>
           <label class="field">

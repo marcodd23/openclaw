@@ -5,6 +5,6 @@ export type ControlUiBootstrapConfig = {
   assistantName: string;
   assistantAvatar: string;
   assistantAgentId: string;
-  /** Present and true when the gateway runs in ClawDeck hosted mode. */
+  /** Present and true when the gateway runs in Chelar hosted mode. */
   hostedMode?: boolean;
 };

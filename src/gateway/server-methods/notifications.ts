@@ -1,7 +1,7 @@
 /**
  * RPC handler for the `notifications.list` method — returns the gateway-wide
  * in-memory notification buffer (billing errors, rate limits, auth failures).
- * Used by the ClawDeck control plane to surface runtime issues in the dashboard.
+ * Used by the Chelar control plane to surface runtime issues in the dashboard.
  */
 
 import { listGatewayNotifications } from "../../infra/gateway-notifications.js";

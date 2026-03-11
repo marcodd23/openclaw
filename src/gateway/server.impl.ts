@@ -520,14 +520,14 @@ export async function startGatewayServer(
       );
 
   // Capture agent lifecycle errors into the gateway notification buffer so
-  // the ClawDeck dashboard can surface billing/rate-limit/auth failures.
+  // the Chelar dashboard can surface billing/rate-limit/auth failures.
   const notifUnsub = minimalTestGateway
     ? null
     : onAgentEvent((evt) => {
         if (evt.stream !== "lifecycle" || evt.data?.phase !== "error") {
           return;
         }
-        const errorText = typeof evt.data?.error === "string" ? (evt.data.error as string) : "";
+        const errorText = typeof evt.data?.error === "string" ? evt.data.error : "";
         if (!errorText) {
           return;
         }

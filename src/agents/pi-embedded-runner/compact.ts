@@ -510,7 +510,7 @@ export async function compactEmbeddedPiSessionDirect(
       userTimeFormat,
       contextFiles,
       memoryCitationsMode: params.config?.memory?.citations,
-      hostedMode: process.env.CLAWDECK_HOSTED === "true",
+      hostedMode: process.env.CHELAR_HOSTED === "true",
     });
     const systemPromptOverride = createSystemPromptOverride(appendPrompt);
 

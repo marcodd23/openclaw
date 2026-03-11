@@ -59,7 +59,7 @@ type SettingsHost = {
   themeMedia: MediaQueryList | null;
   themeMediaHandler: ((event: MediaQueryListEvent) => void) | null;
   pendingGatewayUrl?: string | null;
-  /** True when the gateway runs in ClawDeck hosted mode. */
+  /** True when the gateway runs in Chelar hosted mode. */
   hostedMode?: boolean;
 };
 

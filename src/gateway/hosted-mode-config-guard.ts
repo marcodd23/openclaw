@@ -1,7 +1,7 @@
 import { parseConfigJson5, readConfigFileSnapshot } from "../config/config.js";
 
 /**
- * Top-level config keys that tenants are allowed to modify in ClawDeck
+ * Top-level config keys that tenants are allowed to modify in Chelar
  * hosted mode. Whitelist approach: any key NOT in this set is treated as
  * infrastructure-managed — its current on-disk value is preserved on
  * config.set, and it's stripped from config.patch payloads.

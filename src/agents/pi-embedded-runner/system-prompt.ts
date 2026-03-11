@@ -50,7 +50,7 @@ export function buildEmbeddedSystemPrompt(params: {
   userTimeFormat?: ResolvedTimeFormat;
   contextFiles?: EmbeddedContextFile[];
   memoryCitationsMode?: MemoryCitationsMode;
-  /** Inject ClawDeck hosted-mode safety preamble into the system prompt. */
+  /** Inject Chelar hosted-mode safety preamble into the system prompt. */
   hostedMode?: boolean;
 }): string {
   return buildAgentSystemPrompt({

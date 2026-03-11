@@ -642,13 +642,13 @@ describe("hostedMode preamble", () => {
       workspaceDir: "/workspace",
       hostedMode: true,
     });
-    expect(prompt).toContain("## Platform Constraints (ClawDeck Hosted");
+    expect(prompt).toContain("## Platform Constraints (Chelar Hosted");
     expect(prompt).toContain("NEVER read, write, edit, or delete files outside");
     expect(prompt).toContain("NEVER modify, overwrite, or create files at ~/.openclaw/");
     expect(prompt).toContain("openclaw.json");
     expect(prompt).toContain("NEVER use path traversal");
     expect(prompt).toContain("NEVER attempt to access, read, or enumerate other tenants");
-    expect(prompt).toContain("managed by ClawDeck");
+    expect(prompt).toContain("managed by Chelar");
   });
 
   it("does not inject platform constraints when hostedMode is false", () => {
@@ -657,7 +657,7 @@ describe("hostedMode preamble", () => {
       hostedMode: false,
     });
     expect(prompt).not.toContain("Platform Constraints");
-    expect(prompt).not.toContain("ClawDeck Hosted");
+    expect(prompt).not.toContain("Chelar Hosted");
   });
 
   it("does not inject platform constraints when hostedMode is omitted", () => {

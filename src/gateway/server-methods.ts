@@ -41,8 +41,8 @@ const CONTROL_PLANE_WRITE_METHODS = new Set(["config.apply", "config.patch", "up
 
 /**
  * RPC methods blocked for browser Control UI connections when the gateway
- * runs in ClawDeck hosted mode (CLAWDECK_HOSTED=true). Internal operator
- * clients (the ClawDeck Go API) are exempt because they connect with
+ * runs in Chelar hosted mode (CHELAR_HOSTED=true). Internal operator
+ * clients (the Chelar Go API) are exempt because they connect with
  * platform: "server".
  */
 const HOSTED_MODE_BLOCKED_METHODS = new Set(["config.apply", "update.run"]);
@@ -115,10 +115,10 @@ export async function handleGatewayRequest(
     respond(false, undefined, authError);
     return;
   }
-  // Block dangerous methods for browser Control UI in ClawDeck hosted mode.
+  // Block dangerous methods for browser Control UI in Chelar hosted mode.
   // The Go API connects with platform: "server" and is exempt.
   if (
-    process.env.CLAWDECK_HOSTED === "true" &&
+    process.env.CHELAR_HOSTED === "true" &&
     HOSTED_MODE_BLOCKED_METHODS.has(req.method) &&
     client?.connect?.client?.platform !== "server"
   ) {
@@ -130,7 +130,7 @@ export async function handleGatewayRequest(
     return;
   }
   // Sanitize config operations in hosted mode: preserve restricted keys.
-  if (process.env.CLAWDECK_HOSTED === "true" && client?.connect?.client?.platform !== "server") {
+  if (process.env.CHELAR_HOSTED === "true" && client?.connect?.client?.platform !== "server") {
     const params = (req.params ?? {}) as Record<string, unknown>;
     if (req.method === "config.set") {
       await sanitizeConfigSetForHostedMode(params);

@@ -16,18 +16,18 @@ vi.mock("./hosted-mode-config-guard.js", () => ({
 }));
 
 describe("gateway hosted-mode RPC blocking", () => {
-  const ORIGINAL_ENV = process.env.CLAWDECK_HOSTED;
+  const ORIGINAL_ENV = process.env.CHELAR_HOSTED;
 
   beforeEach(() => {
-    delete process.env.CLAWDECK_HOSTED;
+    delete process.env.CHELAR_HOSTED;
     rateLimitTesting.resetControlPlaneRateLimitState();
   });
 
   afterEach(() => {
     if (ORIGINAL_ENV !== undefined) {
-      process.env.CLAWDECK_HOSTED = ORIGINAL_ENV;
+      process.env.CHELAR_HOSTED = ORIGINAL_ENV;
     } else {
-      delete process.env.CLAWDECK_HOSTED;
+      delete process.env.CHELAR_HOSTED;
     }
   });
 
@@ -63,7 +63,7 @@ describe("gateway hosted-mode RPC blocking", () => {
     } as Parameters<typeof handleGatewayRequest>[0]["client"];
   }
 
-  /** Builds a client simulating the ClawDeck Go API (platform: "server"). */
+  /** Builds a client simulating the Chelar Go API (platform: "server"). */
   function buildServerClient() {
     const connect = buildBrowserConnect();
     connect.client = {
@@ -107,8 +107,8 @@ describe("gateway hosted-mode RPC blocking", () => {
   const BLOCKED_METHODS = ["config.apply", "update.run"];
 
   for (const method of BLOCKED_METHODS) {
-    it(`blocks ${method} for browser client when CLAWDECK_HOSTED=true`, async () => {
-      process.env.CLAWDECK_HOSTED = "true";
+    it(`blocks ${method} for browser client when CHELAR_HOSTED=true`, async () => {
+      process.env.CHELAR_HOSTED = "true";
       const handler: GatewayRequestHandler = (opts) => opts.respond(true, undefined, undefined);
 
       const respond = await runRequest({
@@ -127,8 +127,8 @@ describe("gateway hosted-mode RPC blocking", () => {
       );
     });
 
-    it(`allows ${method} for server platform client when CLAWDECK_HOSTED=true`, async () => {
-      process.env.CLAWDECK_HOSTED = "true";
+    it(`allows ${method} for server platform client when CHELAR_HOSTED=true`, async () => {
+      process.env.CHELAR_HOSTED = "true";
       const handlerCalls = vi.fn();
       const handler: GatewayRequestHandler = (opts) => {
         handlerCalls();
@@ -144,8 +144,8 @@ describe("gateway hosted-mode RPC blocking", () => {
       expect(handlerCalls).toHaveBeenCalledTimes(1);
     });
 
-    it(`allows ${method} for browser client when CLAWDECK_HOSTED is not set`, async () => {
-      // CLAWDECK_HOSTED is not set (deleted in beforeEach)
+    it(`allows ${method} for browser client when CHELAR_HOSTED is not set`, async () => {
+      // CHELAR_HOSTED is not set (deleted in beforeEach)
       const handlerCalls = vi.fn();
       const handler: GatewayRequestHandler = (opts) => {
         handlerCalls();
@@ -166,8 +166,8 @@ describe("gateway hosted-mode RPC blocking", () => {
   const SANITIZED_METHODS = ["config.set", "config.patch"];
 
   for (const method of SANITIZED_METHODS) {
-    it(`allows ${method} for browser client when CLAWDECK_HOSTED=true (sanitized, not blocked)`, async () => {
-      process.env.CLAWDECK_HOSTED = "true";
+    it(`allows ${method} for browser client when CHELAR_HOSTED=true (sanitized, not blocked)`, async () => {
+      process.env.CHELAR_HOSTED = "true";
       const handlerCalls = vi.fn();
       const handler: GatewayRequestHandler = (opts) => {
         handlerCalls();
@@ -184,8 +184,8 @@ describe("gateway hosted-mode RPC blocking", () => {
       expect(handlerCalls).toHaveBeenCalledTimes(1);
     });
 
-    it(`allows ${method} for server platform client when CLAWDECK_HOSTED=true`, async () => {
-      process.env.CLAWDECK_HOSTED = "true";
+    it(`allows ${method} for server platform client when CHELAR_HOSTED=true`, async () => {
+      process.env.CHELAR_HOSTED = "true";
       const handlerCalls = vi.fn();
       const handler: GatewayRequestHandler = (opts) => {
         handlerCalls();
@@ -201,7 +201,7 @@ describe("gateway hosted-mode RPC blocking", () => {
       expect(handlerCalls).toHaveBeenCalledTimes(1);
     });
 
-    it(`allows ${method} for browser client when CLAWDECK_HOSTED is not set`, async () => {
+    it(`allows ${method} for browser client when CHELAR_HOSTED is not set`, async () => {
       const handlerCalls = vi.fn();
       const handler: GatewayRequestHandler = (opts) => {
         handlerCalls();
@@ -220,7 +220,7 @@ describe("gateway hosted-mode RPC blocking", () => {
 
   // --- Sanitization integration: verify the mock guards are called ---
   it("calls sanitizeConfigSetForHostedMode for config.set from browser in hosted mode", async () => {
-    process.env.CLAWDECK_HOSTED = "true";
+    process.env.CHELAR_HOSTED = "true";
     const { sanitizeConfigSetForHostedMode } = await import("./hosted-mode-config-guard.js");
     const handler: GatewayRequestHandler = (opts) => opts.respond(true, undefined, undefined);
 
@@ -235,7 +235,7 @@ describe("gateway hosted-mode RPC blocking", () => {
   });
 
   it("calls sanitizeConfigPatchForHostedMode for config.patch from browser in hosted mode", async () => {
-    process.env.CLAWDECK_HOSTED = "true";
+    process.env.CHELAR_HOSTED = "true";
     const { sanitizeConfigPatchForHostedMode } = await import("./hosted-mode-config-guard.js");
     const handler: GatewayRequestHandler = (opts) => opts.respond(true, undefined, undefined);
 
@@ -250,7 +250,7 @@ describe("gateway hosted-mode RPC blocking", () => {
   });
 
   it("does not call sanitizers for server platform client", async () => {
-    process.env.CLAWDECK_HOSTED = "true";
+    process.env.CHELAR_HOSTED = "true";
     const { sanitizeConfigSetForHostedMode, sanitizeConfigPatchForHostedMode } =
       await import("./hosted-mode-config-guard.js");
     vi.mocked(sanitizeConfigSetForHostedMode).mockClear();
@@ -275,7 +275,7 @@ describe("gateway hosted-mode RPC blocking", () => {
   });
 
   it("does not block non-restricted methods in hosted mode", async () => {
-    process.env.CLAWDECK_HOSTED = "true";
+    process.env.CHELAR_HOSTED = "true";
     const handlerCalls = vi.fn();
     const handler: GatewayRequestHandler = (opts) => {
       handlerCalls();
