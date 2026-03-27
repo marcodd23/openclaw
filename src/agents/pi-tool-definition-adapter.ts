@@ -7,6 +7,7 @@ import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { logDebug, logError } from "../logger.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
 import { isPlainObject } from "../utils.js";
+import { recordAction } from "./hosted-rate-limiter.js";
 import type { ClientToolDefinition } from "./pi-embedded-runner/run/params.js";
 import type { HookContext } from "./pi-tools.before-tool-call.js";
 import {
@@ -98,6 +99,13 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
       parameters: tool.parameters,
       execute: async (...args: ToolExecuteArgs): Promise<AgentToolResult<unknown>> => {
         const { toolCallId, params, onUpdate, signal } = splitToolExecuteArgs(args);
+        // Chelar hosted mode: enforce global tool invocation rate limit.
+        if (!recordAction()) {
+          return jsonResult({
+            error:
+              "Rate limit exceeded: too many tool invocations per hour. Please wait before trying again.",
+          });
+        }
         let executeParams = params;
         try {
           if (!beforeHookWrapped) {
