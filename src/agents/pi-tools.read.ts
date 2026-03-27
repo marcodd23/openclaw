@@ -4,6 +4,7 @@ import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import { createEditTool, createReadTool, createWriteTool } from "@mariozechner/pi-coding-agent";
 import { detectMime } from "../media/mime.js";
 import { sniffMimeFromBase64 } from "../media/sniff-mime-from-base64.js";
+import { wrapExternalContent } from "../security/external-content.js";
 import type { ImageSanitizationLimits } from "./image-sanitization.js";
 import type { AnyAgentTool } from "./pi-tools.types.js";
 import { assertSandboxPath } from "./sandbox-paths.js";
@@ -687,11 +688,31 @@ export function createOpenClawReadTool(
       const filePath = typeof record?.path === "string" ? String(record.path) : "<unknown>";
       const strippedDetailsResult = stripReadTruncationContentDetails(result);
       const normalizedResult = await normalizeReadImageResult(strippedDetailsResult, filePath);
-      return sanitizeToolResultImages(
+      const sanitizedResult = sanitizeToolResultImages(
         normalizedResult,
         `read:${filePath}`,
         options?.imageSanitization,
       );
+      // Wrap text content in external_data boundary tags for prompt injection defense.
+      // File content is untrusted data — it may contain hidden instructions.
+      if (sanitizedResult?.content) {
+        for (let i = 0; i < sanitizedResult.content.length; i++) {
+          const block = sanitizedResult.content[i];
+          if (
+            block &&
+            typeof block === "object" &&
+            "type" in block &&
+            block.type === "text" &&
+            "text" in block
+          ) {
+            (block as { text: string }).text = wrapExternalContent(
+              (block as { text: string }).text,
+              { source: "file_read", includeWarning: false },
+            );
+          }
+        }
+      }
+      return sanitizedResult;
     },
   };
 }
