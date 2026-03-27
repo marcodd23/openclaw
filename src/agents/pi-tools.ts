@@ -59,6 +59,7 @@ import {
   mergeAlsoAllowPolicy,
   resolveToolProfilePolicy,
 } from "./tool-policy.js";
+import { createSandboxExecTool } from "./tools/sandbox-exec-tool.js";
 import { resolveWorkspaceRoot } from "./workspace-dir.js";
 
 function isOpenAIProvider(provider?: string) {
@@ -485,6 +486,15 @@ export function createOpenClawCodingTools(options?: {
       senderIsOwner: options?.senderIsOwner,
     }),
   ];
+
+  // Chelar hosted mode: add sandbox code_exec tool for isolated code execution.
+  if (process.env.CHELAR_HOSTED === "true") {
+    const sandboxTool = createSandboxExecTool();
+    if (sandboxTool) {
+      tools.push(sandboxTool as unknown as AnyAgentTool);
+    }
+  }
+
   // Security: treat unknown/undefined as unauthorized (opt-in, not opt-out)
   const senderIsOwner = options?.senderIsOwner === true;
   const toolsByAuthorization = applyOwnerOnlyToolPolicy(tools, senderIsOwner);
