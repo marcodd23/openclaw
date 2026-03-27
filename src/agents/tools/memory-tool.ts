@@ -5,10 +5,31 @@ import { resolveMemoryBackendConfig } from "../../memory/backend-config.js";
 import { getMemorySearchManager } from "../../memory/index.js";
 import type { MemorySearchResult } from "../../memory/types.js";
 import { parseAgentSessionKey } from "../../routing/session-key.js";
+import { wrapExternalContent } from "../../security/external-content.js";
 import { resolveSessionAgentId } from "../agent-scope.js";
 import { resolveMemorySearchConfig } from "../memory-search.js";
 import type { AnyAgentTool } from "./common.js";
 import { jsonResult, readNumberParam, readStringParam } from "./common.js";
+
+/** Wrap a jsonResult payload in memory_recall boundary tags for prompt injection defense. */
+function memoryResult(payload: unknown): ReturnType<typeof jsonResult> {
+  const result = jsonResult(payload);
+  for (const block of result.content) {
+    if (
+      block &&
+      typeof block === "object" &&
+      "type" in block &&
+      block.type === "text" &&
+      "text" in block
+    ) {
+      (block as { text: string }).text = wrapExternalContent((block as { text: string }).text, {
+        source: "memory_recall",
+        includeWarning: false,
+      });
+    }
+  }
+  return result;
+}
 
 const MemorySearchSchema = Type.Object({
   query: Type.String(),
@@ -82,7 +103,7 @@ export function createMemorySearchTool(options: {
             ? clampResultsByInjectedChars(decorated, resolved.qmd?.limits.maxInjectedChars)
             : decorated;
         const searchMode = (status.custom as { searchMode?: string } | undefined)?.searchMode;
-        return jsonResult({
+        return memoryResult({
           results,
           provider: status.provider,
           model: status.model,
@@ -130,7 +151,7 @@ export function createMemoryGetTool(options: {
           from: from ?? undefined,
           lines: lines ?? undefined,
         });
-        return jsonResult(result);
+        return memoryResult(result);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return jsonResult({ path: relPath, text: "", disabled: true, error: message });
