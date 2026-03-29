@@ -33,6 +33,7 @@ export const HOSTED_MODE_FORCED_SUBKEYS: Record<string, Record<string, unknown>>
     bash: false,
     config: false,
     debug: false,
+    restart: false,
   },
 };
 
@@ -48,6 +49,10 @@ export const HOSTED_MODE_FORCED_DEEP_PATHS: Record<string, unknown> = {
   // Restrict agent file tools to the workspace directory — prevents writing
   // to config files or other paths outside the per-tenant workspace on JuiceFS.
   "tools.fs.workspaceOnly": true,
+  // Lock down exec — prevents re-enabling shell execution via config.patch.
+  "tools.exec.security": "deny",
+  // Prevent re-enabling elevated mode (sandbox escape hatch).
+  "tools.elevated.enabled": false,
 };
 
 /**
@@ -70,6 +75,36 @@ function applyForcedDeepPaths(config: Record<string, unknown>): void {
     }
     if (obj) {
       obj[parts[parts.length - 1]] = value;
+    }
+  }
+}
+
+/**
+ * Tool names that must always be present in tools.deny in hosted mode.
+ * The gateway tool gives agents access to config.patch/config.apply — if not
+ * denied, an agent (or prompt injection) could rewrite the entire config.
+ */
+export const HOSTED_MODE_FORCED_DENY_TOOLS = ["gateway"];
+
+/**
+ * Ensure HOSTED_MODE_FORCED_DENY_TOOLS are present in tools.deny.
+ * Only modifies the config if the tools section exists (consistent with the
+ * skip-on-missing pattern used by applyForcedDeepPaths).
+ */
+function applyForcedToolsDeny(config: Record<string, unknown>): void {
+  const tools = config.tools;
+  if (!tools || typeof tools !== "object" || Array.isArray(tools)) {
+    return;
+  }
+  const toolsObj = tools as Record<string, unknown>;
+  if (!Array.isArray(toolsObj.deny)) {
+    toolsObj.deny = [...HOSTED_MODE_FORCED_DENY_TOOLS];
+    return;
+  }
+  const deny = toolsObj.deny as unknown[];
+  for (const tool of HOSTED_MODE_FORCED_DENY_TOOLS) {
+    if (!deny.includes(tool)) {
+      deny.push(tool);
     }
   }
 }
@@ -134,6 +169,8 @@ export async function sanitizeConfigSetForHostedMode(
   applyForcedSubkeys(incoming);
   // Force-lock deeply nested sandbox settings (Docker network, readOnlyRoot).
   applyForcedDeepPaths(incoming);
+  // Ensure gateway tool is always in tools.deny (prevents config self-modification).
+  applyForcedToolsDeny(incoming);
 
   params.raw = JSON.stringify(incoming, null, 2);
   return true;
@@ -173,6 +210,8 @@ export function sanitizeConfigPatchForHostedMode(params: Record<string, unknown>
   applyForcedSubkeys(incoming);
   // Force-lock deeply nested sandbox settings (Docker network, readOnlyRoot).
   applyForcedDeepPaths(incoming);
+  // Ensure gateway tool is always in tools.deny (prevents config self-modification).
+  applyForcedToolsDeny(incoming);
 
   params.raw = JSON.stringify(incoming, null, 2);
   return true;

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   HOSTED_MODE_ALLOWED_CONFIG_KEYS,
   HOSTED_MODE_FORCED_DEEP_PATHS,
+  HOSTED_MODE_FORCED_DENY_TOOLS,
   HOSTED_MODE_FORCED_SUBKEYS,
   sanitizeConfigPatchForHostedMode,
   sanitizeConfigSetForHostedMode,
@@ -163,6 +164,7 @@ describe("sanitizeConfigSetForHostedMode", () => {
     expect(sanitized.commands.bash).toBe(false);
     expect(sanitized.commands.config).toBe(false);
     expect(sanitized.commands.debug).toBe(false);
+    expect(sanitized.commands.restart).toBe(false);
   });
 
   it("returns false for missing raw param", async () => {
@@ -355,24 +357,25 @@ describe("HOSTED_MODE_ALLOWED_CONFIG_KEYS", () => {
 });
 
 describe("HOSTED_MODE_FORCED_SUBKEYS", () => {
-  it("forces commands.bash/config/debug to false", () => {
+  it("forces commands.bash/config/debug/restart to false", () => {
     expect(HOSTED_MODE_FORCED_SUBKEYS.commands).toEqual({
       bash: false,
       config: false,
       debug: false,
+      restart: false,
     });
   });
 });
 
 describe("forced sub-keys in sanitizeConfigSetForHostedMode", () => {
-  it("overrides commands.bash/config/debug even if tenant enables them", async () => {
+  it("overrides commands.bash/config/debug/restart even if tenant enables them", async () => {
     await mockCurrentConfig({
-      commands: { bash: false, config: false, debug: false, text: true },
+      commands: { bash: false, config: false, debug: false, restart: false, text: true },
     });
 
     const params: Record<string, unknown> = {
       raw: JSON.stringify({
-        commands: { bash: true, config: true, debug: true, text: true },
+        commands: { bash: true, config: true, debug: true, restart: true, text: true },
       }),
     };
 
@@ -383,6 +386,7 @@ describe("forced sub-keys in sanitizeConfigSetForHostedMode", () => {
     expect(sanitized.commands.bash).toBe(false);
     expect(sanitized.commands.config).toBe(false);
     expect(sanitized.commands.debug).toBe(false);
+    expect(sanitized.commands.restart).toBe(false);
     // Non-forced sub-keys pass through
     expect(sanitized.commands.text).toBe(true);
   });
@@ -403,15 +407,16 @@ describe("forced sub-keys in sanitizeConfigSetForHostedMode", () => {
     expect(sanitized.commands.bash).toBe(false);
     expect(sanitized.commands.config).toBe(false);
     expect(sanitized.commands.debug).toBe(false);
+    expect(sanitized.commands.restart).toBe(false);
     expect(sanitized.commands.native).toBe("auto");
   });
 });
 
 describe("forced sub-keys in sanitizeConfigPatchForHostedMode", () => {
-  it("overrides commands.bash/config/debug in patch", () => {
+  it("overrides commands.bash/config/debug/restart in patch", () => {
     const params: Record<string, unknown> = {
       raw: JSON.stringify({
-        commands: { bash: true, config: true, debug: true, restart: true },
+        commands: { bash: true, config: true, debug: true, restart: true, text: true },
       }),
     };
 
@@ -422,8 +427,9 @@ describe("forced sub-keys in sanitizeConfigPatchForHostedMode", () => {
     expect(sanitized.commands.bash).toBe(false);
     expect(sanitized.commands.config).toBe(false);
     expect(sanitized.commands.debug).toBe(false);
+    expect(sanitized.commands.restart).toBe(false);
     // Non-forced sub-keys pass through
-    expect(sanitized.commands.restart).toBe(true);
+    expect(sanitized.commands.text).toBe(true);
   });
 
   it("does not create commands section if not in patch", () => {
@@ -450,6 +456,14 @@ describe("HOSTED_MODE_FORCED_DEEP_PATHS", () => {
 
   it("forces tools.fs.workspaceOnly to true", () => {
     expect(HOSTED_MODE_FORCED_DEEP_PATHS["tools.fs.workspaceOnly"]).toBe(true);
+  });
+
+  it("forces tools.exec.security to deny", () => {
+    expect(HOSTED_MODE_FORCED_DEEP_PATHS["tools.exec.security"]).toBe("deny");
+  });
+
+  it("forces tools.elevated.enabled to false", () => {
+    expect(HOSTED_MODE_FORCED_DEEP_PATHS["tools.elevated.enabled"]).toBe(false);
   });
 });
 
@@ -572,6 +586,192 @@ describe("tools.fs.workspaceOnly forced deep path", () => {
   });
 
   it("does not inject tools.fs.workspaceOnly when tools section is absent", () => {
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        agents: { list: [] },
+      }),
+    };
+
+    const result = sanitizeConfigPatchForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.tools).toBeUndefined();
+  });
+});
+
+describe("tools.exec and tools.elevated forced deep paths", () => {
+  it("forces exec.security to deny in config.set", async () => {
+    await mockCurrentConfig({});
+
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        tools: { exec: { security: "full", host: "gateway" } },
+      }),
+    };
+
+    const result = await sanitizeConfigSetForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.tools.exec.security).toBe("deny");
+    // Non-forced exec settings pass through
+    expect(sanitized.tools.exec.host).toBe("gateway");
+  });
+
+  it("forces tools.elevated.enabled to false in config.set", async () => {
+    await mockCurrentConfig({});
+
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        tools: { elevated: { enabled: true }, alsoAllow: ["browser"] },
+      }),
+    };
+
+    const result = await sanitizeConfigSetForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.tools.elevated.enabled).toBe(false);
+    expect(sanitized.tools.alsoAllow).toEqual(["browser"]);
+  });
+
+  it("forces exec.security to deny in config.patch", () => {
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        tools: { exec: { security: "allow" } },
+      }),
+    };
+
+    const result = sanitizeConfigPatchForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.tools.exec.security).toBe("deny");
+  });
+
+  it("forces tools.elevated.enabled to false in config.patch", () => {
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        tools: { elevated: { enabled: true } },
+      }),
+    };
+
+    const result = sanitizeConfigPatchForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.tools.elevated.enabled).toBe(false);
+  });
+});
+
+describe("HOSTED_MODE_FORCED_DENY_TOOLS", () => {
+  it("includes gateway", () => {
+    expect(HOSTED_MODE_FORCED_DENY_TOOLS).toContain("gateway");
+  });
+});
+
+describe("forced tools.deny in sanitizeConfigSetForHostedMode", () => {
+  it("adds gateway to existing tools.deny", async () => {
+    await mockCurrentConfig({});
+
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        tools: { deny: ["process", "apply_patch"] },
+      }),
+    };
+
+    const result = await sanitizeConfigSetForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.tools.deny).toContain("gateway");
+    expect(sanitized.tools.deny).toContain("process");
+    expect(sanitized.tools.deny).toContain("apply_patch");
+  });
+
+  it("does not duplicate gateway if already present", async () => {
+    await mockCurrentConfig({});
+
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        tools: { deny: ["process", "gateway"] },
+      }),
+    };
+
+    const result = await sanitizeConfigSetForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    const gatewayCount = sanitized.tools.deny.filter((t: string) => t === "gateway").length;
+    expect(gatewayCount).toBe(1);
+  });
+
+  it("creates tools.deny with gateway when tools exists but deny is missing", async () => {
+    await mockCurrentConfig({});
+
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        tools: { alsoAllow: ["browser"] },
+      }),
+    };
+
+    const result = await sanitizeConfigSetForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.tools.deny).toEqual(["gateway"]);
+    expect(sanitized.tools.alsoAllow).toEqual(["browser"]);
+  });
+
+  it("does not create tools section when absent", async () => {
+    await mockCurrentConfig({});
+
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        agents: { list: [] },
+      }),
+    };
+
+    const result = await sanitizeConfigSetForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.tools).toBeUndefined();
+  });
+});
+
+describe("forced tools.deny in sanitizeConfigPatchForHostedMode", () => {
+  it("adds gateway to existing tools.deny in patch", () => {
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        tools: { deny: ["process"] },
+      }),
+    };
+
+    const result = sanitizeConfigPatchForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.tools.deny).toContain("gateway");
+    expect(sanitized.tools.deny).toContain("process");
+  });
+
+  it("creates tools.deny with gateway when tools exists but deny is missing in patch", () => {
+    const params: Record<string, unknown> = {
+      raw: JSON.stringify({
+        tools: { elevated: true },
+      }),
+    };
+
+    const result = sanitizeConfigPatchForHostedMode(params);
+
+    expect(result).toBe(true);
+    const sanitized = JSON.parse(params.raw as string);
+    expect(sanitized.tools.deny).toEqual(["gateway"]);
+  });
+
+  it("does not create tools section when absent in patch", () => {
     const params: Record<string, unknown> = {
       raw: JSON.stringify({
         agents: { list: [] },
